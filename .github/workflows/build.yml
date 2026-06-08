@@ -35,7 +35,6 @@ jobs:
             squashfs-tools pngcrush dpkg-dev liblz4-tool \
             lib32ncurses5-dev libx11-dev lib32z-dev \
             libncurses5 libncurses5-dev cpio xz-utils \
-            repo libc6-dev-i386 lib32readline-dev \
             device-tree-compiler
 
       - name: Install Clang/LLVM toolchain
@@ -48,13 +47,16 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global color.ui false
 
-      - name: Sync kernel + device + vendor source (minimal)
+      - name: Clone kernel + device + vendor source
         env:
           LINEAGE_VERSION: ${{ inputs.lineage_version || 'lineage-23.2' }}
         run: |
           mkdir -p ~/android && cd ~/android
-          repo init -u https://github.com/LineageOS/android.git -b $LINEAGE_VERSION --depth=1 --no-clone-bundle
-          repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags kernel/oneplus/sm8250 device/oneplus/kebab vendor/oneplus
+          git clone --depth 1 -b $LINEAGE_VERSION https://github.com/LineageOS/android_kernel_oneplus_sm8250.git kernel/oneplus/sm8250
+          git clone --depth 1 -b $LINEAGE_VERSION https://github.com/LineageOS/android_device_oneplus_kebab.git device/oneplus/kebab
+          # vendor oneplus might not exist as a separate repo; try to find the right one
+          git clone --depth 1 -b $LINEAGE_VERSION https://github.com/TheMuppets/proprietary_vendor_oneplus.git vendor/oneplus 2>/dev/null || true
+          ls kernel/oneplus/sm8250/arch/arm64/configs/vendor/
 
       - name: Clone AnyKernel3
         run: |

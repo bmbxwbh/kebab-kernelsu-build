@@ -13,7 +13,7 @@ KERNEL_DIR="$WORK_DIR/kernel/oneplus/sm8250"
 
 echo ""
 echo "[1/6] 检查依赖..."
-local_deps=(git curl flex bison build-essential libssl-dev libelf-dev python3 gcc-aarch64-linux-gnu cpio xz-utils repo device-tree-compiler clang llvm lld)
+local_deps=(git curl flex bison build-essential libssl-dev libelf-dev python3 gcc-aarch64-linux-gnu cpio xz-utils device-tree-compiler clang llvm lld)
 for dep in "${local_deps[@]}"; do
     if ! command -v "$dep" &> /dev/null && ! dpkg -s "${dep}" &> /dev/null 2>&1; then
         echo "安装依赖: $dep"
@@ -26,11 +26,11 @@ echo "[2/6] 同步内核+设备+vendor 源码..."
 mkdir -p "$WORK_DIR"
 cd "$WORK_DIR"
 
-if [ ! -d "$WORK_DIR/.repo" ]; then
-    repo init -u https://github.com/LineageOS/android.git -b "$LINEAGE_VERSION" --depth=1 --no-clone-bundle
-fi
+git clone --depth 1 -b "$LINEAGE_VERSION" https://github.com/LineageOS/android_kernel_oneplus_sm8250.git kernel/oneplus/sm8250 2>/dev/null || true
+git clone --depth 1 -b "$LINEAGE_VERSION" https://github.com/LineageOS/android_device_oneplus_kebab.git device/oneplus/kebab 2>/dev/null || true
+git clone --depth 1 -b "$LINEAGE_VERSION" https://github.com/TheMuppets/proprietary_vendor_oneplus.git vendor/oneplus 2>/dev/null || true
 
-repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags kernel/oneplus/sm8250 device/oneplus/kebab vendor/oneplus
+ls kernel/oneplus/sm8250/arch/arm64/configs/vendor/
 
 echo ""
 echo "[3/6] 克隆 AnyKernel3..."
