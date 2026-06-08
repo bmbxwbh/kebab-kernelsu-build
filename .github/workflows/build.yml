@@ -34,11 +34,13 @@ jobs:
             libxml2-utils bzip2 libbz2-dev libbz2-1.0 \
             squashfs-tools pngcrush dpkg-dev liblz4-tool \
             lib32ncurses5-dev libx11-dev lib32z-dev \
-            libncurses5 libncurses5-dev cpio xz-utils
+            libncurses5 libncurses5-dev cpio xz-utils \
+            repo libc6-dev-i386 lib32readline-dev \
+            device-tree-compiler
 
-      - name: Install toolchain
+      - name: Install Clang/LLVM toolchain
         run: |
-          apt-get install -y gcc-aarch64-linux-gnu
+          apt-get install -y clang llvm lld
 
       - name: Set up git
         run: |
@@ -46,12 +48,13 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global color.ui false
 
-      - name: Clone kernel source
+      - name: Sync kernel + device + vendor source (minimal)
         env:
           LINEAGE_VERSION: ${{ inputs.lineage_version || 'lineage-23.2' }}
         run: |
-          git clone --depth 10 https://github.com/LineageOS/android_kernel_oneplus_sm8250.git -b $LINEAGE_VERSION kernel_source
-          cd kernel_source && ls arch/arm64/configs/vendor/
+          mkdir -p ~/android && cd ~/android
+          repo init -u https://github.com/LineageOS/android.git -b $LINEAGE_VERSION --depth=1 --git-lfs --no-clone-bundle
+          repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags kernel/oneplus/sm8250 device/oneplus/kebab vendor/oneplus
 
       - name: Clone AnyKernel3
         run: |
@@ -61,36 +64,37 @@ jobs:
         env:
           KERNELSU_VERSION: ${{ inputs.kernelsu_version || 'main' }}
         run: |
-          cd kernel_source
+          cd ~/android/kernel/oneplus/sm8250
           curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s $KERNELSU_VERSION
 
       - name: Configure kernel
         run: |
-          cd kernel_source
+          cd ~/android/kernel/oneplus/sm8250
 
-          # SM8250 uses kona-perf_defconfig in vendor directory
           DEFCONFIG="arch/arm64/configs/vendor/kona-perf_defconfig"
           echo "Using defconfig: $DEFCONFIG"
-          
-          # Verify defconfig file exists
+
           if [ ! -f "$DEFCONFIG" ]; then
             echo "ERROR: Defconfig not found at $DEFCONFIG"
-            ls -la arch/arm64/configs/
-            ls -la arch/arm64/configs/vendor/ 2>/dev/null || true
+            ls -la arch/arm64/configs/vendor/
             exit 1
           fi
 
-          echo -e "\n# KernelSU\nCONFIG_KSU=y\nCONFIG_KPROBES=y\nCONFIG_HAVE_KPROBES=y\nCONFIG_KPROBE_EVENTS=y\n# Disable tracing features to avoid missing header errors\nCONFIG_TRACING=n\nCONFIG_FTRACE=n" >> "$DEFCONFIG"
+          # Enable KernelSU and disable features that cause build errors
+          echo -e "\n# KernelSU\nCONFIG_KSU=y\nCONFIG_KPROBES=y\nCONFIG_HAVE_KPROBES=y\nCONFIG_KPROBE_EVENTS=y\n# Disable problematic features\nCONFIG_TRACING=n\nCONFIG_FTRACE=n" >> "$DEFCONFIG"
 
       - name: Build kernel
         run: |
-          cd kernel_source
+          cd ~/android/kernel/oneplus/sm8250
 
           export ARCH=arm64
           export SUBARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
-          export PATH=/usr/bin:$PATH
-          # Disable WERROR to avoid all warnings being treated as errors
+          export CC=clang
+          export CLANG_TRIPLE=aarch64-linux-gnu-
+          export PATH=/usr/lib/llvm-14/bin:/usr/bin:$PATH
+
+          # Disable WERROR
           export KCFLAGS="-Wno-error"
 
           make clean && make mrproper
@@ -99,7 +103,7 @@ jobs:
 
       - name: Prepare AnyKernel3
         run: |
-          cd kernel_source
+          cd ~/android/kernel/oneplus/sm8250
 
           if [ -f arch/arm64/boot/Image.gz ]; then
             cp arch/arm64/boot/Image.gz ~/AnyKernel3/
@@ -115,8 +119,6 @@ jobs:
           echo "KernelSU-${{ inputs.kernelsu_version || 'main' }}-$TAG_NAME" > ~/AnyKernel3/version
 
       - name: Package AnyKernel3
-        env:
-          KERNELSU_VERSION: ${{ inputs.kernelsu_version || 'main' }}
         run: |
           cd ~/AnyKernel3
           zip -r9 ../KernelSU-kebab-$(date +%Y%m%d).zip * -x .git README.md AnyKernel3.zip
