@@ -1,0 +1,16 @@
+# 构建输出
+*.img
+*.zip
+out/
+build/
+
+# LineageOS 源码目录
+android/
+
+# 临时文件
+*.tmp
+*.log
+
+# IDE
+.vscode/
+.idea/
