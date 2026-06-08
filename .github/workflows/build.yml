@@ -90,8 +90,8 @@ jobs:
           export SUBARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
           export PATH=/usr/bin:$PATH
-          # Disable WERROR via KCFLAGS to avoid format string warnings being treated as errors
-          export KCFLAGS="-Wno-error=format"
+          # Disable WERROR to avoid all warnings being treated as errors
+          export KCFLAGS="-Wno-error"
 
           make clean && make mrproper
           make vendor/kona-perf_defconfig

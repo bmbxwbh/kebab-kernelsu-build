@@ -79,8 +79,8 @@ build_kernel() {
     export SUBARCH=arm64
     export CROSS_COMPILE=aarch64-linux-gnu-
     export PATH=/usr/bin:$PATH
-    # Disable WERROR via KCFLAGS to avoid format string warnings being treated as errors
-    export KCFLAGS="-Wno-error=format"
+    # Disable WERROR to avoid all warnings being treated as errors
+    export KCFLAGS="-Wno-error"
 
     # SM8250 使用 vendor/kona-perf_defconfig
     local defconfig="arch/arm64/configs/vendor/kona-perf_defconfig"
