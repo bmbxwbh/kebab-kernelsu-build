@@ -20,7 +20,7 @@ echo "========================================"
 check_dependencies() {
     echo "[1/6] 检查依赖..."
 
-    local deps=(git curl flex bison build-essential libssl-dev libelf-dev python3 gcc-aarch64-linux-gnu)
+    local deps=(git curl flex bison build-essential libssl-dev libelf-dev python3 gcc-aarch64-linux-gnu cpio xz-utils)
     for dep in "${deps[@]}"; do
         if ! command -v "$dep" &> /dev/null && ! dpkg -s "${dep}" &> /dev/null 2>&1; then
             echo "安装依赖: $dep"
