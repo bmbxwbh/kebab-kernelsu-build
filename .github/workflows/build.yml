@@ -53,7 +53,7 @@ jobs:
           LINEAGE_VERSION: ${{ inputs.lineage_version || 'lineage-23.2' }}
         run: |
           mkdir -p ~/android && cd ~/android
-          repo init -u https://github.com/LineageOS/android.git -b $LINEAGE_VERSION --depth=1 --git-lfs --no-clone-bundle
+          repo init -u https://github.com/LineageOS/android.git -b $LINEAGE_VERSION --depth=1 --no-clone-bundle
           repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags kernel/oneplus/sm8250 device/oneplus/kebab vendor/oneplus
 
       - name: Clone AnyKernel3

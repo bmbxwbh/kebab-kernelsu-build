@@ -27,7 +27,7 @@ mkdir -p "$WORK_DIR"
 cd "$WORK_DIR"
 
 if [ ! -d "$WORK_DIR/.repo" ]; then
-    repo init -u https://github.com/LineageOS/android.git -b "$LINEAGE_VERSION" --depth=1 --git-lfs --no-clone-bundle
+    repo init -u https://github.com/LineageOS/android.git -b "$LINEAGE_VERSION" --depth=1 --no-clone-bundle
 fi
 
 repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags kernel/oneplus/sm8250 device/oneplus/kebab vendor/oneplus
