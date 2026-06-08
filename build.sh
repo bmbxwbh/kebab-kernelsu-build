@@ -1,160 +1,146 @@
 #!/bin/bash
 # OnePlus 8T (kebab) KernelSU 内核构建脚本
-# 基于 LineageOS 23.2 + 原版 KernelSU v3.2.4
+# 只构建内核，不需要完整 LineageOS 源码
 
 set -e
 
 # 配置
-LINEAGE_BRANCH="lineage-23.2"
-KERNELSU_VERSION="v3.2.4"
+LINEAGE_BRANCH="${1:-lineage-23.2}"
+KERNELSU_VERSION="${2:-main}"
 DEVICE="kebab"
-WORK_DIR="${HOME}/android/lineage"
-KERNEL_DIR="${WORK_DIR}/kernel/oneplus/sm8250"
+KERNEL_SOURCE="${HOME}/kernel_source"
 
 echo "========================================"
 echo "OnePlus 8T KernelSU 内核构建"
-echo "LineageOS: ${LINEAGE_BRANCH}"
+echo "内核分支: ${LINEAGE_BRANCH}"
 echo "KernelSU: ${KERNELSU_VERSION}"
 echo "========================================"
 
 # 1. 检查依赖
 check_dependencies() {
-    echo "[1/7] 检查依赖..."
-    
-    local deps=(git curl flex bison build-essential libssl-dev libelf-dev python3)
+    echo "[1/6] 检查依赖..."
+
+    local deps=(git curl flex bison build-essential libssl-dev libelf-dev python3 gcc-aarch64-linux-gnu)
     for dep in "${deps[@]}"; do
-        if ! command -v "$dep" &> /dev/null; then
-            echo "错误: 缺少依赖 $dep"
-            echo "请运行: sudo apt install -y git curl flex bison build-essential libssl-dev libelf-dev python3"
-            exit 1
+        if ! command -v "$dep" &> /dev/null && ! dpkg -s "${dep}" &> /dev/null 2>&1; then
+            echo "安装依赖: $dep"
+            sudo apt-get update && sudo apt-get install -y "$dep" || true
         fi
     done
-    
-    echo "依赖检查通过"
+
+    echo "依赖检查完成"
 }
 
-# 2. 同步 LineageOS 源码
-sync_lineage() {
-    echo "[2/7] 同步 LineageOS 源码..."
-    
-    if [ ! -d "$WORK_DIR" ]; then
-        mkdir -p "$WORK_DIR"
+# 2. 克隆内核源码
+clone_kernel() {
+    echo "[2/6] 克隆内核源码..."
+
+    if [ -d "$KERNEL_SOURCE" ]; then
+        echo "内核源码已存在，跳过克隆"
+        return
     fi
-    
-    cd "$WORK_DIR"
-    
-    if [ ! -d ".repo" ]; then
-        echo "初始化 LineageOS 仓库..."
-        repo init -u https://github.com/LineageOS/android.git -b "$LINEAGE_BRANCH" --git-lfs --no-clone-bundle
-    fi
-    
-    echo "同步源码 (这可能需要很长时间)..."
-    repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
-    
-    echo "LineageOS 源码同步完成"
+
+    git clone --depth 1 https://github.com/LineageOS/android_kernel_oneplus_sm8250.git -b "$LINEAGE_BRANCH" "$KERNEL_SOURCE"
+
+    echo "内核源码克隆完成"
 }
 
-# 3. 准备设备代码
-prepare_device() {
-    echo "[3/7] 准备设备代码..."
-    
-    cd "$WORK_DIR"
-    source build/envsetup.sh
-    breakfast "$DEVICE"
-    
-    echo "设备代码准备完成"
+# 3. 克隆 AnyKernel3
+clone_anykernel() {
+    echo "[3/6] 克隆 AnyKernel3..."
+
+    if [ -d "${HOME}/AnyKernel3" ]; then
+        echo "AnyKernel3 已存在"
+    else
+        git clone --depth 1 https://github.com/osm0sis/AnyKernel3.git "${HOME}/AnyKernel3"
+    fi
+
+    echo "AnyKernel3 准备完成"
 }
 
 # 4. 集成 KernelSU
 integrate_kernelsu() {
-    echo "[4/7] 集成 KernelSU ${KERNELSU_VERSION}..."
-    
-    cd "$KERNEL_DIR"
-    
-    # 使用 KernelSU 官方 setup.sh 脚本
-    echo "下载并运行 KernelSU 集成脚本..."
-    curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
-    
+    echo "[4/6] 集成 KernelSU ${KERNELSU_VERSION}..."
+
+    cd "$KERNEL_SOURCE"
+
+    curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s "$KERNELSU_VERSION"
+
     echo "KernelSU 集成完成"
 }
 
-# 5. 配置内核
-configure_kernel() {
-    echo "[5/7] 配置内核..."
-    
-    cd "$KERNEL_DIR"
-    
+# 5. 配置并编译内核
+build_kernel() {
+    echo "[5/6] 配置并编译内核..."
+
+    cd "$KERNEL_SOURCE"
+
+    export ARCH=arm64
+    export SUBARCH=arm64
+    export CROSS_COMPILE=aarch64-linux-gnu-
+    export PATH=/usr/bin:$PATH
+
     # 查找 defconfig
     local defconfig
     defconfig=$(find arch/arm64/configs -name "*kebab*" -o -name "*sm8250*" | head -1)
-    
+
     if [ -z "$defconfig" ]; then
         echo "错误: 找不到 defconfig 文件"
         exit 1
     fi
-    
+
     echo "使用 defconfig: $defconfig"
-    
-    # 启用 KernelSU 和 kprobe
-    cat >> "$defconfig" << 'EOF'
 
-# KernelSU
-CONFIG_KSU=y
-CONFIG_KPROBES=y
-CONFIG_HAVE_KPROBES=y
-CONFIG_KPROBE_EVENTS=y
-EOF
-    
-    echo "内核配置完成"
-}
+    # 启用 KernelSU
+    if ! grep -q "CONFIG_KSU=y" "$defconfig" 2>/dev/null; then
+        echo -e "\n# KernelSU\nCONFIG_KSU=y\nCONFIG_KPROBES=y\nCONFIG_HAVE_KPROBES=y\nCONFIG_KPROBE_EVENTS=y" >> "$defconfig"
+    fi
 
-# 6. 编译内核
-build_kernel() {
-    echo "[6/7] 编译内核..."
-    
-    cd "$KERNEL_DIR"
-    
-    export ARCH=arm64
-    export SUBARCH=arm64
-    
-    # 清理
+    # 清理并编译
     make clean && make mrproper
-    
-    # 生成配置
+
     local defconfig_name
-    defconfig_name=$(basename $(find arch/arm64/configs -name "*kebab*" -o -name "*sm8250*" | head -1))
+    defconfig_name=$(basename "$defconfig")
     make "$defconfig_name"
-    
-    # 编译
     make -j$(nproc --all)
-    
+
     echo "内核编译完成"
 }
 
-# 7. 打包 boot.img
-package_boot() {
-    echo "[7/7] 打包 boot.img..."
-    
-    cd "$WORK_DIR"
-    source build/envsetup.sh
-    breakfast "$DEVICE"
-    
-    # 构建 bootimage
-    mka bootimage
-    
-    local boot_img="${WORK_DIR}/out/target/product/${DEVICE}/boot.img"
-    
-    if [ -f "$boot_img" ]; then
+# 6. 打包
+package() {
+    echo "[6/6] 打包 AnyKernel3..."
+
+    cd "$KERNEL_SOURCE"
+
+    # 复制内核镜像
+    if [ -f arch/arm64/boot/Image.gz ]; then
+        cp arch/arm64/boot/Image.gz "${HOME}/AnyKernel3/"
+    elif [ -f arch/arm64/boot/Image ]; then
+        cp arch/arm64/boot/Image "${HOME}/AnyKernel3/Image.gz"
+    fi
+
+    # 复制设备树
+    if [ -d arch/arm64/boot/dts ]; then
+        cp -r arch/arm64/boot/dts "${HOME}/AnyKernel3/"
+    fi
+
+    # 创建版本文件
+    echo "KernelSU-$KERNELSU_VERSION-$(date +%Y%m%d)" > "${HOME}/AnyKernel3/version"
+
+    # 打包
+    cd "${HOME}/AnyKernel3"
+    zip -r9 ../KernelSU-kebab-$(date +%Y%m%d).zip * -x .git README.md AnyKernel3.zip
+
+    local zipfile="${HOME}/KernelSU-kebab-$(date +%Y%m%d).zip"
+
+    if [ -f "$zipfile" ]; then
         echo "========================================"
         echo "构建成功!"
-        echo "boot.img 路径: $boot_img"
+        echo "ZIP 路径: $zipfile"
         echo "========================================"
-        
-        # 复制到项目目录
-        cp "$boot_img" "$(dirname "$0")/boot-kernelsu-${KERNELSU_VERSION}.img"
-        echo "已复制到项目目录"
     else
-        echo "错误: boot.img 构建失败"
+        echo "错误: 打包失败"
         exit 1
     fi
 }
@@ -162,17 +148,20 @@ package_boot() {
 # 主流程
 main() {
     check_dependencies
-    sync_lineage
-    prepare_device
+    clone_kernel
+    clone_anykernel
     integrate_kernelsu
-    configure_kernel
     build_kernel
-    package_boot
-    
+    package
+
     echo ""
     echo "所有步骤完成!"
-    echo "刷入命令: fastboot flash boot boot-kernelsu-${KERNELSU_VERSION}.img"
+    echo ""
+    echo "刷入方法:"
+    echo "1. TWRP: 直接刷入 zip 包"
+    echo "2. fastboot: fastboot flash boot boot.img"
+    echo ""
+    echo "别忘了安装 KernelSU Manager: https://github.com/tiann/KernelSU/releases"
 }
 
-# 运行
 main "$@"

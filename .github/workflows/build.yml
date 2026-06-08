@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       lineage_version:
-        description: 'LineageOS version'
+        description: 'LineageOS version branch'
         required: true
         default: 'lineage-23.2'
       kernelsu_version:
@@ -36,11 +36,9 @@ jobs:
             lib32ncurses5-dev libx11-dev lib32z-dev \
             libncurses5 libncurses5-dev
 
-      - name: Install repo command
+      - name: Install toolchain
         run: |
-          curl -s https://storage.googleapis.com/git-repo-downloads/repo > /usr/local/bin/repo
-          chmod +x /usr/local/bin/repo
-          pip3 install pyyaml
+          apt-get install -y gcc-aarch64-linux-gnu
 
       - name: Set up git
         run: |
@@ -48,20 +46,11 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global color.ui false
 
-      - name: Sync LineageOS source
+      - name: Clone kernel source
         env:
           LINEAGE_VERSION: ${{ inputs.lineage_version || 'lineage-23.2' }}
         run: |
-          mkdir -p ~/android/lineage
-          cd ~/android/lineage
-          repo init -u https://github.com/LineageOS/android.git -b $LINEAGE_VERSION --git-lfs --no-clone-bundle
-          repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
-
-      - name: Prepare device
-        run: |
-          cd ~/android/lineage
-          source build/envsetup.sh
-          breakfast kebab
+          git clone --depth 1 https://github.com/LineageOS/android_kernel_oneplus_sm8250.git -b $LINEAGE_VERSION kernel_source
 
       - name: Clone AnyKernel3
         run: |
@@ -71,12 +60,12 @@ jobs:
         env:
           KERNELSU_VERSION: ${{ inputs.kernelsu_version || 'main' }}
         run: |
-          cd ~/android/lineage/kernel/oneplus/sm8250
+          cd kernel_source
           curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s $KERNELSU_VERSION
 
       - name: Configure kernel
         run: |
-          cd ~/android/lineage/kernel/oneplus/sm8250
+          cd kernel_source
 
           DEFCONFIG=$(find arch/arm64/configs -name "*kebab*" -o -name "*sm8250*" | head -1)
           echo "Using defconfig: $DEFCONFIG"
@@ -84,15 +73,13 @@ jobs:
           echo -e "\n# KernelSU\nCONFIG_KSU=y\nCONFIG_KPROBES=y\nCONFIG_HAVE_KPROBES=y\nCONFIG_KPROBE_EVENTS=y" >> "$DEFCONFIG"
 
       - name: Build kernel
-        env:
-          KERNELSU_VERSION: ${{ inputs.kernelsu_version || 'main' }}
         run: |
-          cd ~/android/lineage/kernel/oneplus/sm8250
+          cd kernel_source
 
           export ARCH=arm64
           export SUBARCH=arm64
-          export CROSS_COMPILE=aarch64-linux-android-
-          export PATH=~/android/lineage/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/bin:$PATH
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          export PATH=/usr/bin:$PATH
 
           DEFCONFIG_NAME=$(basename $(find arch/arm64/configs -name "*kebab*" -o -name "*sm8250*" | head -1))
           make clean && make mrproper
@@ -100,16 +87,13 @@ jobs:
           make -j$(nproc)
 
       - name: Prepare AnyKernel3
-        env:
-          KERNELSU_VERSION: ${{ inputs.kernelsu_version || 'main' }}
         run: |
-          cd ~/android/lineage/kernel/oneplus/sm8250
+          cd kernel_source
 
           if [ -f arch/arm64/boot/Image.gz ]; then
             cp arch/arm64/boot/Image.gz ~/AnyKernel3/
           elif [ -f arch/arm64/boot/Image ]; then
             cp arch/arm64/boot/Image ~/AnyKernel3/Image.gz
-            gzip ~/AnyKernel3/Image.gz
           fi
 
           if [ -d arch/arm64/boot/dts ]; then
@@ -117,7 +101,7 @@ jobs:
           fi
 
           TAG_NAME=${GITHUB_REF#refs/tags/}
-          echo "KernelSU-$KERNELSU_VERSION-$TAG_NAME" > ~/AnyKernel3/version
+          echo "KernelSU-${{ inputs.kernelsu_version || 'main' }}-$TAG_NAME" > ~/AnyKernel3/version
 
       - name: Package AnyKernel3
         env:
@@ -152,7 +136,7 @@ jobs:
             - Device: OnePlus 8T (kebab)
             - SoC: Qualcomm SM8250 (Snapdragon 865)
             - KernelSU: ${{ inputs.kernelsu_version || 'main' }}
-            - LineageOS: ${{ inputs.lineage_version || 'lineage-23.2' }}
+            - Kernel branch: ${{ inputs.lineage_version || 'lineage-23.2' }}
 
             ### Installation
             1. Flash via TWRP: Flash the zip in recovery
@@ -163,7 +147,7 @@ jobs:
             3. Install KernelSU Manager from GitHub Releases
 
             ### Notes
-            - Built from LineageOS ${{ inputs.lineage_version || 'lineage-23.2' }}
+            - Built from android_kernel_oneplus_sm8250 (${{ inputs.lineage_version || 'lineage-23.2' }})
             - Use at your own risk!
           draft: false
           prerelease: false
