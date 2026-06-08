@@ -67,7 +67,8 @@ jobs:
         run: |
           cd kernel_source
 
-          DEFCONFIG=$(find arch/arm64/configs -name "*kebab*" -o -name "*sm8250*" | head -1)
+          # SM8250 uses kona-perf_defconfig in vendor directory
+          DEFCONFIG="vendor/kona-perf_defconfig"
           echo "Using defconfig: $DEFCONFIG"
 
           echo -e "\n# KernelSU\nCONFIG_KSU=y\nCONFIG_KPROBES=y\nCONFIG_HAVE_KPROBES=y\nCONFIG_KPROBE_EVENTS=y" >> "$DEFCONFIG"
@@ -81,9 +82,8 @@ jobs:
           export CROSS_COMPILE=aarch64-linux-gnu-
           export PATH=/usr/bin:$PATH
 
-          DEFCONFIG_NAME=$(basename $(find arch/arm64/configs -name "*kebab*" -o -name "*sm8250*" | head -1))
           make clean && make mrproper
-          make "$DEFCONFIG_NAME"
+          make kona-perf_defconfig
           make -j$(nproc)
 
       - name: Prepare AnyKernel3

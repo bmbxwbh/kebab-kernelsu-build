@@ -80,12 +80,11 @@ build_kernel() {
     export CROSS_COMPILE=aarch64-linux-gnu-
     export PATH=/usr/bin:$PATH
 
-    # 查找 defconfig
-    local defconfig
-    defconfig=$(find arch/arm64/configs -name "*kebab*" -o -name "*sm8250*" | head -1)
+    # 查找 defconfig - SM8250 使用 vendor/kona-perf_defconfig
+    local defconfig="vendor/kona-perf_defconfig"
 
-    if [ -z "$defconfig" ]; then
-        echo "错误: 找不到 defconfig 文件"
+    if [ ! -f "$defconfig" ]; then
+        echo "错误: 找不到 defconfig 文件: $defconfig"
         exit 1
     fi
 
@@ -99,8 +98,7 @@ build_kernel() {
     # 清理并编译
     make clean && make mrproper
 
-    local defconfig_name
-    defconfig_name=$(basename "$defconfig")
+    local defconfig_name="vendor/kona-perf_defconfig"
     make "$defconfig_name"
     make -j$(nproc --all)
 
