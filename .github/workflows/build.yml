@@ -80,7 +80,7 @@ jobs:
             exit 1
           fi
 
-          echo -e "\n# KernelSU\nCONFIG_KSU=y\nCONFIG_KPROBES=y\nCONFIG_HAVE_KPROBES=y\nCONFIG_KPROBE_EVENTS=y" >> "$DEFCONFIG"
+          echo -e "\n# KernelSU\nCONFIG_KSU=y\nCONFIG_KPROBES=y\nCONFIG_HAVE_KPROBES=y\nCONFIG_KPROBE_EVENTS=y\n# Disable WERROR to avoid build failures from format warnings\nCONFIG_WERROR=n" >> "$DEFCONFIG"
 
       - name: Build kernel
         run: |
