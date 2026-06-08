@@ -69,8 +69,16 @@ jobs:
           cd kernel_source
 
           # SM8250 uses kona-perf_defconfig in vendor directory
-          DEFCONFIG="vendor/kona-perf_defconfig"
+          DEFCONFIG="arch/arm64/configs/vendor/kona-perf_defconfig"
           echo "Using defconfig: $DEFCONFIG"
+          
+          # Verify defconfig file exists
+          if [ ! -f "$DEFCONFIG" ]; then
+            echo "ERROR: Defconfig not found at $DEFCONFIG"
+            ls -la arch/arm64/configs/
+            ls -la arch/arm64/configs/vendor/ 2>/dev/null || true
+            exit 1
+          fi
 
           echo -e "\n# KernelSU\nCONFIG_KSU=y\nCONFIG_KPROBES=y\nCONFIG_HAVE_KPROBES=y\nCONFIG_KPROBE_EVENTS=y" >> "$DEFCONFIG"
 
@@ -84,7 +92,7 @@ jobs:
           export PATH=/usr/bin:$PATH
 
           make clean && make mrproper
-          make kona-perf_defconfig
+          make vendor/kona-perf_defconfig
           make -j$(nproc)
 
       - name: Prepare AnyKernel3

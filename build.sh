@@ -81,7 +81,7 @@ build_kernel() {
     export PATH=/usr/bin:$PATH
 
     # 查找 defconfig - SM8250 使用 vendor/kona-perf_defconfig
-    local defconfig="vendor/kona-perf_defconfig"
+    local defconfig="arch/arm64/configs/vendor/kona-perf_defconfig"
 
     if [ ! -f "$defconfig" ]; then
         echo "错误: 找不到 defconfig 文件: $defconfig"
