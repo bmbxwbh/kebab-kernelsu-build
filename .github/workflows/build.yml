@@ -35,7 +35,8 @@ jobs:
             squashfs-tools pngcrush dpkg-dev liblz4-tool \
             lib32ncurses5-dev libx11-dev lib32z-dev \
             libncurses5 libncurses5-dev cpio xz-utils \
-            device-tree-compiler
+            device-tree-compiler gcc-aarch64-linux-gnu \
+            g++-aarch64-linux-gnu
 
       - name: Install Clang/LLVM toolchain
         run: |
@@ -92,16 +93,30 @@ jobs:
           export ARCH=arm64
           export SUBARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
+          export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
           export CC=clang
           export CLANG_TRIPLE=aarch64-linux-gnu-
           export PATH=/usr/lib/llvm-14/bin:/usr/bin:$PATH
+          export LD=ld.lld
+          export AR=llvm-ar
+          export NM=llvm-nm
+          export OBJCOPY=llvm-objcopy
+          export OBJDUMP=llvm-objdump
+          export STRIP=llvm-strip
 
           # Disable WERROR
           export KCFLAGS="-Wno-error"
 
           make clean && make mrproper
-          make vendor/kona-perf_defconfig
-          make -j$(nproc)
+          # Try defconfig variants - kona-perf_defconfig is under vendor/ subdir
+          if [ -f "arch/arm64/configs/vendor/kona-perf_defconfig" ]; then
+            # Use direct copy for subdir defconfig since make may not find it
+            cp arch/arm64/configs/vendor/kona-perf_defconfig .config
+            make olddefconfig
+          else
+            make kona-perf_defconfig
+          fi
+          make -j$(nproc) Image.gz dtbs
 
       - name: Prepare AnyKernel3
         run: |
