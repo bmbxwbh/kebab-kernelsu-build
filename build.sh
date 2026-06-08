@@ -79,8 +79,10 @@ build_kernel() {
     export SUBARCH=arm64
     export CROSS_COMPILE=aarch64-linux-gnu-
     export PATH=/usr/bin:$PATH
+    # Disable WERROR via KCFLAGS to avoid format string warnings being treated as errors
+    export KCFLAGS="-Wno-error=format"
 
-    # 查找 defconfig - SM8250 使用 vendor/kona-perf_defconfig
+    # SM8250 使用 vendor/kona-perf_defconfig
     local defconfig="arch/arm64/configs/vendor/kona-perf_defconfig"
 
     if [ ! -f "$defconfig" ]; then
@@ -92,14 +94,12 @@ build_kernel() {
 
     # 启用 KernelSU
     if ! grep -q "CONFIG_KSU=y" "$defconfig" 2>/dev/null; then
-        echo -e "\n# KernelSU\nCONFIG_KSU=y\nCONFIG_KPROBES=y\nCONFIG_HAVE_KPROBES=y\nCONFIG_KPROBE_EVENTS=y\n# Disable WERROR to avoid build failures from format warnings\nCONFIG_WERROR=n" >> "$defconfig"
+        echo -e "\n# KernelSU\nCONFIG_KSU=y\nCONFIG_KPROBES=y\nCONFIG_HAVE_KPROBES=y\nCONFIG_KPROBE_EVENTS=y" >> "$defconfig"
     fi
 
     # 清理并编译
     make clean && make mrproper
-
-    local defconfig_name="vendor/kona-perf_defconfig"
-    make "$defconfig_name"
+    make "$defconfig"
     make -j$(nproc --all)
 
     echo "内核编译完成"
