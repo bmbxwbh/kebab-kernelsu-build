@@ -94,7 +94,7 @@ build_kernel() {
 
     # 启用 KernelSU
     if ! grep -q "CONFIG_KSU=y" "$defconfig" 2>/dev/null; then
-        echo -e "\n# KernelSU\nCONFIG_KSU=y\nCONFIG_KPROBES=y\nCONFIG_HAVE_KPROBES=y\nCONFIG_KPROBE_EVENTS=y" >> "$defconfig"
+        echo -e "\n# KernelSU\nCONFIG_KSU=y\nCONFIG_KPROBES=y\nCONFIG_HAVE_KPROBES=y\nCONFIG_KPROBE_EVENTS=y\n# Disable tracing features to avoid missing header errors\nCONFIG_TRACING=n\nCONFIG_FTRACE=n" >> "$defconfig"
     fi
 
     # 清理并编译
