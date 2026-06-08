@@ -23,7 +23,7 @@
 ## 构建环境
 
 - Ubuntu 22.04 LTS
-- 至少 30GB 可用空间
+- 至少 20GB 可用空间
 - gcc-aarch64-linux-gnu 交叉编译工具链
 
 ## 本地构建
