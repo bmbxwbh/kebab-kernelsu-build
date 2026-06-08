@@ -71,17 +71,43 @@ jobs:
         run: |
           cd ~/android/kernel/oneplus/sm8250
 
-          DEFCONFIG="arch/arm64/configs/vendor/kona-perf_defconfig"
+          export ARCH=arm64
+          export SUBARCH=arm64
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          export CC=clang
+          export CLANG_TRIPLE=aarch64-linux-gnu-
+          export LD=ld.lld
+          export AR=llvm-ar
+          export NM=llvm-nm
+          export OBJCOPY=llvm-objcopy
+          export OBJDUMP=llvm-objdump
+          export STRIP=llvm-strip
+
+          DEFCONFIG="vendor/kona-perf_defconfig"
           echo "Using defconfig: $DEFCONFIG"
 
-          if [ ! -f "$DEFCONFIG" ]; then
-            echo "ERROR: Defconfig not found at $DEFCONFIG"
+          if [ ! -f "arch/arm64/configs/$DEFCONFIG" ]; then
+            echo "ERROR: Defconfig not found"
             ls -la arch/arm64/configs/vendor/
             exit 1
           fi
 
-          # Enable KernelSU and disable features that cause build errors
-          echo -e "\n# KernelSU\nCONFIG_KSU=y\nCONFIG_KPROBES=y\nCONFIG_HAVE_KPROBES=y\nCONFIG_KPROBE_EVENTS=y\n# Disable problematic features\nCONFIG_TRACING=n\nCONFIG_FTRACE=n" >> "$DEFCONFIG"
+          # Start from a clean defconfig
+          make "$DEFCONFIG"
+
+          # Enable KernelSU options using kernel's config script
+          ./scripts/config --enable CONFIG_KSU
+          ./scripts/config --enable CONFIG_KPROBES
+          ./scripts/config --enable CONFIG_HAVE_KPROBES
+          ./scripts/config --enable CONFIG_KPROBE_EVENTS
+
+          # Disable problematic drivers that have missing headers
+          ./scripts/config --disable CONFIG_SND_SOC_MSM8996_WCD9335 || true
+          ./scripts/config --disable CONFIG_MSM_CAMERA || true
+          ./scripts/config --disable CONFIG_VIDEO_MSM_CAMERA || true
+
+          # Re-run olddefconfig to resolve any dependencies
+          make olddefconfig
 
       - name: Build kernel
         run: |
@@ -90,10 +116,8 @@ jobs:
           export ARCH=arm64
           export SUBARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
-          export CROSS_COMPILE_ARM32=arm-linux-gnueabi-
           export CC=clang
           export CLANG_TRIPLE=aarch64-linux-gnu-
-          export PATH=/usr/lib/llvm-14/bin:/usr/bin:$PATH
           export LD=ld.lld
           export AR=llvm-ar
           export NM=llvm-nm
@@ -101,19 +125,11 @@ jobs:
           export OBJDUMP=llvm-objdump
           export STRIP=llvm-strip
 
-          # Disable WERROR
+          # Disable warnings-as-errors
           export KCFLAGS="-Wno-error"
 
-          make clean && make mrproper
-          # Try defconfig variants - kona-perf_defconfig is under vendor/ subdir
-          if [ -f "arch/arm64/configs/vendor/kona-perf_defconfig" ]; then
-            # Use direct copy for subdir defconfig since make may not find it
-            cp arch/arm64/configs/vendor/kona-perf_defconfig .config
-            make olddefconfig
-          else
-            make kona-perf_defconfig
-          fi
-          make -j$(nproc) Image.gz dtbs
+          # Build kernel
+          make -j$(nproc) Image.gz dtbs 2>&1 | tail -n 500
 
       - name: Prepare AnyKernel3
         run: |
