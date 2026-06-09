@@ -9,47 +9,222 @@
 - **内核源码**: [LineageOS android_kernel_oneplus_sm8250](https://github.com/LineageOS/android_kernel_oneplus_sm8250)
 - **分支**: lineage-23.2
 
-## ✨ 特性
-
-### 🔹 内核版本
-
-基于 LineageOS 23.2 内核，集成最新版 KernelSU。
+## ✨ 版本特性 (v1.7.0)
 
 ### 🔹 构建变体
 
-| 变体 | 描述 | 特点 |
-|------|------|------|
-| **balanced** | 均衡版（推荐） | BBRv3、NTFS3、exFAT、ZSwap、UClamp |
-| **battery** | 省电版 | UClamp、ZSwap（默认开启）、关闭调试功能 |
-| **hide** | 隐藏版 | HidePID、Unshare、关闭内核符号 |
-| **sufs** | SUFS版 | 隐藏版功能 + Safe Security FileSystem |
-| **performance** | 性能版 | BBRv3、NTFS3、exFAT、FTrace、WALT |
+| 变体 | 描述 | 推荐场景 |
+|------|------|---------|
+| **balanced** | 均衡版（推荐） | 日常使用，平衡性能与续航 |
+| **battery** | 省电版 | 追求极致续航，低负载场景 |
+| **hide** | 隐藏版 | 追求隐藏 root，隐私保护 |
+| **sufs** | SUFS版 | 极致安全 + 隐藏 |
+| **performance** | 性能版 | 极致性能，多任务/游戏 |
 
-### 🔹 功能分类
+---
+
+### 🔹 各版本功能对比
+
+| 功能分类 | 具体功能 | balanced | battery | hide | sufs | performance |
+|----------|---------|----------|---------|------|------|-------------|
+| **KernelSU** | 基础支持 | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **KernelSU** | HidePID2 | ❌ | ❌ | ✅ | ✅ | ❌ |
+| **KernelSU** | Unshare | ❌ | ❌ | ✅ | ✅ | ❌ |
+| **KernelSU** | SUFS | ❌ | ❌ | ❌ | ✅ | ❌ |
+| **文件系统** | F2FS | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **文件系统** | F2FS LZ4压缩 | ✅ | ✅ | ❌ | ❌ | ✅ |
+| **文件系统** | NTFS3 | ✅ | ❌ | ❌ | ❌ | ✅ |
+| **文件系统** | exFAT | ✅ | ❌ | ❌ | ❌ | ✅ |
+| **网络** | BBRv3 拥塞控制 | ✅ | ❌ | ❌ | ❌ | ✅ |
+| **网络** | NET_RX_BUSY_POLL | ✅ | ❌ | ❌ | ❌ | ✅ |
+| **内存** | ZRAM 50% | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **内存** | ZRAM 100% (1:1) | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **内存** | ZSwap 压缩 | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **内存** | Transparent Hugepage | ✅ | ❌ | ❌ | ❌ | ✅ |
+| **内存** | KSM 页面合并 | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **调度** | UClamp | ✅ | ✅ | ❌ | ❌ | ✅ |
+| **调度** | WALT | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **调度** | CFS Bandwidth | ✅ | ❌ | ❌ | ❌ | ✅ |
+| **调度** | Schedutil Governor | ✅ | ✅ | ❌ | ❌ | ✅ |
+| **调度** | Performance Governor | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **调度** | Powersave Governor | ❌ | ✅ | ❌ | ❌ | ❌ |
+| **电源** | S2IDLE 深度空闲 | ❌ | ✅ | ❌ | ❌ | ❌ |
+| **电源** | Wakelocks 唤醒锁 | ❌ | ✅ | ❌ | ❌ | ❌ |
+| **编译** | Clang LTO 优化 | ✅ | ❌ | ❌ | ❌ | ✅ |
+| **编译** | Performance 优化 | ✅ | ❌ | ❌ | ❌ | ✅ |
+| **调试** | FTRACE 追踪 | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **隐藏** | 关闭 KALLSYMS | ❌ | ❌ | ✅ | ✅ | ❌ |
+| **隐藏** | 关闭 DEBUG_FS | ❌ | ✅ | ✅ | ✅ | ❌ |
+| **隐藏** | 关闭 PROC_KCORE | ❌ | ❌ | ✅ | ✅ | ❌ |
+| **隐藏** | 关闭 DEBUG_KERNEL | ❌ | ✅ | ✅ | ✅ | ❌ |
+| **隐藏** | 关闭 DEBUG_INFO | ❌ | ❌ | ✅ | ✅ | ❌ |
+
+---
+
+### 🔹 各版本详细功能
+
+#### ⚖️ Balanced（均衡版 - 推荐）
+
+**推荐人群**: 日常使用，兼顾性能和续航
+
+```
+文件系统:
+  ├─ F2FS + LZ4 压缩
+  ├─ NTFS3 支持
+  └─ exFAT 支持
+
+网络:
+  ├─ TCP BBRv3 拥塞控制
+  └─ NET_RX_BUSY_POLL
+
+内存:
+  ├─ ZRAM (50% 物理内存, LZ4)
+  ├─ ZSwap 压缩
+  └─ Transparent Hugepage
+
+调度:
+  ├─ UClamp 任务调度
+  ├─ CFS Bandwidth
+  └─ Schedutil 频率调节
+
+编译:
+  ├─ Clang LTO 链接时优化
+  └─ CC_OPTIMIZE_FOR_PERFORMANCE
+```
+
+#### 🔋 Battery（省电版）
+
+**推荐人群**: 追求续航，轻度使用
+
+```
+文件系统:
+  ├─ F2FS + LZ4 压缩
+
+内存:
+  ├─ UClamp 任务调度
+  ├─ ZSwap (默认开启)
+  └─ S2IDLE 深度空闲
+
+电源:
+  ├─ Wake locks 唤醒锁控制
+  ├─ Powersave CPU 调频器
+  └─ Schedutil 频率调节
+
+隐藏/省电:
+  ├─ DEBUG_FS 关闭
+  └─ DEBUG_KERNEL 关闭
+```
+
+#### 🎭 Hide（隐藏版）
+
+**推荐人群**: 追求 root 隐藏，隐私保护
+
+```
+文件系统:
+  └─ F2FS 基础支持
+
+隐藏增强:
+  ├─ KSU HidePID2
+  ├─ KSU Unshare
+  ├─ 关闭 KALLSYMS_ALL
+  ├─ 关闭 DEBUG_FS
+  ├─ 关闭 PROC_KCORE
+  ├─ 关闭 DEBUG_KERNEL
+  ├─ 关闭 DEBUG_INFO
+  └─ 关闭 DEBUG_MEMORY_INIT
+```
+
+#### 🛡️ SUFS版
+
+**推荐人群**: 追求极致安全 + 隐藏
+
+```
+包含 Hide 版的全部隐藏功能
+加上:
+  └─ KernelSU Safe Security FileSystem (SUFS)
+```
+
+#### ⚡ Performance（性能版）
+
+**推荐人群**: 游戏、多任务、高性能需求
+
+```
+文件系统:
+  ├─ F2FS + LZ4 压缩
+  ├─ NTFS3 支持
+  └─ exFAT 支持
+
+网络:
+  ├─ TCP BBRv3 拥塞控制
+  └─ NET_RX_BUSY_POLL
+
+内存:
+  ├─ ZRAM (100% 物理内存, 1:1)
+  ├─ Transparent Hugepage
+  └─ KSM 页面合并
+
+调度:
+  ├─ UClamp 任务调度
+  ├─ WALT 调度
+  ├─ CFS Bandwidth
+  ├─ Schedutil 频率调节
+  └─ Performance 调频器
+
+编译:
+  ├─ Clang LTO 链接时优化
+  └─ CC_OPTIMIZE_FOR_PERFORMANCE
+
+调试/追踪:
+  └─ FTRACE 内核追踪
+```
+
+---
+
+### 🔹 功能分类总览
 
 **Root/隐藏增强:**
-- KSU HidePID2
-- KSU Unshare 伪装
-- 关闭 KALLSYMS
-- 关闭 DEBUG_FS
-- 关闭 PROC_KCORE
+- KSU HidePID2（进程隐藏）
+- KSU Unshare（命名空间隔离）
+- 关闭 KALLSYMS（内核符号隐藏）
+- 关闭 DEBUG_FS（调试文件系统）
+- 关闭 PROC_KCORE（内核内存访问）
 - SUFS 安全文件系统
 
 **调度/内存/IO:**
-- UClamp 任务调度
-- WALT 调度
-- ZRAM LZ4 压缩
-- ZSwap 压缩
+- UClamp 任务调度（精细 CPU 控制）
+- WALT 调度（窗口感知负载追踪）
+- ZRAM LZ4 压缩（虚拟内存扩展）
+- ZSwap 压缩（交换页面压缩）
+- Transparent Hugepage（大页透明支持）
+- KSM 页面合并（节省内存）
+- CFS Bandwidth（带宽控制）
 
 **网络/文件系统:**
 - TCP BBRv3 拥塞控制
-- NTFS3 支持
-- exFAT 支持
-- WireGuard 支持
+- F2FS + LZ4 压缩（闪存优化文件系统）
+- NTFS3 支持（原生 NTFS 驱动）
+- exFAT 支持（大文件存储）
+
+**电源管理:**
+- S2IDLE 深度空闲状态
+- Wake locks 唤醒锁控制
+- Powersave / Schedutil 频率调节
+
+---
 
 ## 📥 下载
 
 最新版本请前往 [Releases](https://github.com/bmbxwbh/kebab-kernelsu-build/releases) 页面下载。
+
+每个版本包含5个不同的刷机包：
+
+```
+KernelSU-kebab-balanced-*.zip      ← 推荐
+KernelSU-kebab-battery-*.zip
+KernelSU-kebab-hide-*.zip
+KernelSU-kebab-sufs-*.zip
+KernelSU-kebab-performance-*.zip
+```
 
 ## 🔧 安装
 
@@ -109,8 +284,10 @@ sudo apt-get update && sudo apt-get install -y \
 git clone https://github.com/bmbxwbh/kebab-kernelsu-build.git
 cd kebab-kernelsu-build
 
-# 运行构建脚本
-./build.sh
+# 查看构建配置
+cat .github/workflows/build.yml
+
+# 手动执行各构建步骤（参考 workflow）
 ```
 
 ## 🚀 GitHub Actions 自动构建
@@ -142,4 +319,4 @@ cd kebab-kernelsu-build
 
 ---
 
-**设备**: OnePlus 8T (kebab) | **内核**: LineageOS 23.2 + KernelSU
+**设备**: OnePlus 8T (kebab) | **内核**: LineageOS 23.2 + KernelSU | **版本**: v1.7.0
