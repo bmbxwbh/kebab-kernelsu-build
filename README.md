@@ -16,48 +16,53 @@
 | 变体 | 描述 | 推荐场景 |
 |------|------|---------|
 | **balanced** | 均衡版（推荐） | 日常使用，平衡性能与续航 |
+| **unsigned** | 过签名版 | 需要加载未签名内核模块 |
+| **sufs** | SUFS版 | 极致安全 + 隐藏 |
 | **battery** | 省电版 | 追求极致续航，低负载场景 |
 | **hide** | 隐藏版 | 追求隐藏 root，隐私保护 |
-| **sufs** | SUFS版 | 极致安全 + 隐藏 |
 | **performance** | 性能版 | 极致性能，多任务/游戏 |
 
 ---
 
 ### 🔹 各版本功能对比
 
-| 功能分类 | 具体功能 | balanced | battery | hide | sufs | performance |
-|----------|---------|----------|---------|------|------|-------------|
-| **KernelSU** | 基础支持 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **KernelSU** | HidePID2 | ❌ | ❌ | ✅ | ✅ | ❌ |
-| **KernelSU** | Unshare | ❌ | ❌ | ✅ | ✅ | ❌ |
-| **KernelSU** | SUFS | ❌ | ❌ | ❌ | ✅ | ❌ |
-| **文件系统** | F2FS | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **文件系统** | F2FS LZ4压缩 | ✅ | ✅ | ❌ | ❌ | ✅ |
-| **文件系统** | NTFS3 | ✅ | ❌ | ❌ | ❌ | ✅ |
-| **文件系统** | exFAT | ✅ | ❌ | ❌ | ❌ | ✅ |
-| **网络** | BBRv3 拥塞控制 | ✅ | ❌ | ❌ | ❌ | ✅ |
-| **网络** | NET_RX_BUSY_POLL | ✅ | ❌ | ❌ | ❌ | ✅ |
-| **内存** | ZRAM 50% | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **内存** | ZRAM 100% (1:1) | ❌ | ❌ | ❌ | ❌ | ✅ |
-| **内存** | ZSwap 压缩 | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **内存** | Transparent Hugepage | ✅ | ❌ | ❌ | ❌ | ✅ |
-| **内存** | KSM 页面合并 | ❌ | ❌ | ❌ | ❌ | ✅ |
-| **调度** | UClamp | ✅ | ✅ | ❌ | ❌ | ✅ |
-| **调度** | WALT | ❌ | ❌ | ❌ | ❌ | ✅ |
-| **调度** | CFS Bandwidth | ✅ | ❌ | ❌ | ❌ | ✅ |
-| **调度** | Schedutil Governor | ✅ | ✅ | ❌ | ❌ | ✅ |
-| **调度** | Performance Governor | ❌ | ❌ | ❌ | ❌ | ✅ |
-| **调度** | Powersave Governor | ❌ | ✅ | ❌ | ❌ | ❌ |
-| **电源** | S2IDLE 深度空闲 | ❌ | ✅ | ❌ | ❌ | ❌ |
-| **电源** | Wakelocks 唤醒锁 | ❌ | ✅ | ❌ | ❌ | ❌ |
-| **编译** | Clang LTO 优化 | ✅ | ❌ | ❌ | ❌ | ✅ |
-| **编译** | Performance 优化 | ✅ | ❌ | ❌ | ❌ | ✅ |
-| **调试** | FTRACE 追踪 | ❌ | ❌ | ❌ | ❌ | ✅ |
-| **隐藏** | 关闭 KALLSYMS | ❌ | ❌ | ✅ | ✅ | ❌ |
-| **隐藏** | 关闭 DEBUG_FS | ❌ | ✅ | ✅ | ✅ | ❌ |
-| **隐藏** | 关闭 PROC_KCORE | ❌ | ❌ | ✅ | ✅ | ❌ |
-| **隐藏** | 关闭 DEBUG_KERNEL | ❌ | ✅ | ✅ | ✅ | ❌ |
-| **隐藏** | 关闭 DEBUG_INFO | ❌ | ❌ | ✅ | ✅ | ❌ |
+| 功能分类 | 具体功能 | balanced | unsigned | sufs | battery | hide | performance |
+|----------|---------|----------|---------|------|---------|------|-------------|
+| **KernelSU** | 基础支持 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **KernelSU** | HidePID2 | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
+| **KernelSU** | Unshare | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
+| **KernelSU** | SUFS | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| **文件系统** | F2FS | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **文件系统** | F2FS LZ4压缩 | ✅ | ✅ | ❌ | ✅ | ❌ | ✅ |
+| **文件系统** | NTFS3 | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
+| **文件系统** | exFAT | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
+| **网络** | BBRv3 拥塞控制 | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
+| **网络** | NET_RX_BUSY_POLL | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
+| **内存** | ZRAM 50% | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **内存** | ZRAM 100% (1:1) | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **内存** | ZSwap 压缩 | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
+| **内存** | Transparent Hugepage | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
+| **内存** | KSM 页面合并 | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **调度** | UClamp | ✅ | ✅ | ❌ | ✅ | ❌ | ✅ |
+| **调度** | WALT | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **调度** | CFS Bandwidth | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
+| **调度** | Schedutil Governor | ✅ | ✅ | ❌ | ✅ | ❌ | ✅ |
+| **调度** | Performance Governor | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **调度** | Powersave Governor | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| **电源** | S2IDLE 深度空闲 | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| **电源** | Wakelocks 唤醒锁 | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| **编译** | Clang LTO 优化 | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
+| **编译** | Performance 优化 | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
+| **调试** | FTRACE 追踪 | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **隐藏** | 关闭 KALLSYMS | ❌ | ❌ | ✅ | ❌ | ✅ | ❌ |
+| **隐藏** | 关闭 DEBUG_FS | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
+| **隐藏** | 关闭 PROC_KCORE | ❌ | ❌ | ✅ | ❌ | ✅ | ❌ |
+| **隐藏** | 关闭 DEBUG_KERNEL | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ |
+| **隐藏** | 关闭 DEBUG_INFO | ❌ | ❌ | ✅ | ❌ | ✅ | ❌ |
+| **模块签名** | 禁用 MODULE_SIG | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **模块签名** | 禁用 MODULE_SIG_FORCE | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **模块签名** | 禁用 MODULE_SIG_ALL | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **模块签名** | 禁用 SECURITY_LOCKDOWN | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 ---
 
@@ -90,6 +95,22 @@
 编译:
   ├─ Clang LTO 链接时优化
   └─ CC_OPTIMIZE_FOR_PERFORMANCE
+```
+
+#### 🔓 Unsigned（过签名版）
+
+**推荐人群**: 需要加载未签名内核模块
+
+```
+基于均衡版的全部功能，加上:
+
+模块签名:
+  ├─ 禁用 MODULE_SIG
+  ├─ 禁用 MODULE_SIG_FORCE
+  ├─ 禁用 MODULE_SIG_ALL
+  └─ 禁用 SECURITY_LOCKDOWN_LSM
+
+可加载未签名内核模块 (.ko)
 ```
 
 #### 🔋 Battery（省电版）
@@ -216,13 +237,14 @@
 
 最新版本请前往 [Releases](https://github.com/bmbxwbh/kebab-kernelsu-build/releases) 页面下载。
 
-每个版本包含5个不同的刷机包：
+每个版本包含6个不同的刷机包：
 
 ```
 KernelSU-kebab-balanced-*.zip      ← 推荐
+KernelSU-kebab-unsigned-*.zip     ← 过签名
+KernelSU-kebab-sufs-*.zip
 KernelSU-kebab-battery-*.zip
 KernelSU-kebab-hide-*.zip
-KernelSU-kebab-sufs-*.zip
 KernelSU-kebab-performance-*.zip
 ```
 
@@ -319,4 +341,4 @@ cat .github/workflows/build.yml
 
 ---
 
-**设备**: OnePlus 8T (kebab) | **内核**: LineageOS 23.2 + KernelSU | **版本**: v1.7.0
+**设备**: OnePlus 8T (kebab) | **内核**: LineageOS 23.2 + KernelSU | **版本**: v1.8.0
