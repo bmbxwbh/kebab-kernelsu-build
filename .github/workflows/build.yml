@@ -129,6 +129,11 @@ jobs:
           ./scripts/config --enable CONFIG_EXFAT_FS
           ./scripts/config --enable CONFIG_ZSWAP
           ./scripts/config --enable CONFIG_UCLAMP_TASK
+          
+          ./scripts/config --enable CONFIG_ZRAM
+          ./scripts/config --enable CONFIG_ZRAM_COMPRESSION_LZ4
+          ./scripts/config --set-val CONFIG_ZRAM_MEMORY_PERCENTAGE 50
+          ./scripts/config --set-val CONFIG_ZRAM_MAX_DEVICES 1
 
           make olddefconfig
 
@@ -189,6 +194,11 @@ jobs:
           ./scripts/config --enable CONFIG_FUNCTION_TRACER
           ./scripts/config --enable CONFIG_UCLAMP_TASK
           ./scripts/config --enable CONFIG_SCHED_WALT
+          
+          ./scripts/config --enable CONFIG_ZRAM
+          ./scripts/config --enable CONFIG_ZRAM_COMPRESSION_LZ4
+          ./scripts/config --set-val CONFIG_ZRAM_MEMORY_PERCENTAGE 100
+          ./scripts/config --set-val CONFIG_ZRAM_MAX_DEVICES 1
 
           make olddefconfig
 
@@ -276,11 +286,11 @@ jobs:
 
             | Variant | Description | Features |
             |---------|-------------|----------|
-            | `KernelSU-kebab-balanced-*.zip` | **Recommended** | Balanced: BBRv3, NTFS3, exFAT, ZSwap, UClamp |
+            | `KernelSU-kebab-balanced-*.zip` | **Recommended** | BBRv3, NTFS3, exFAT, ZSwap, UClamp, ZRAM 50% |
             | `KernelSU-kebab-sufs-*.zip` | SUFS version | Safe Security FileSystem + Full Hide features |
-            | `KernelSU-kebab-battery-*.zip` | Battery saving | UClamp, ZSwap, disabled DEBUG_FS |
+            | `KernelSU-kebab-battery-*.zip` | Battery saving | UClamp, ZSwap (default), disabled DEBUG_FS |
             | `KernelSU-kebab-hide-*.zip` | Hide enhanced | HidePID, Unshare, disable debug symbols |
-            | `KernelSU-kebab-performance-*.zip` | Performance | BBRv3, NTFS3, exFAT, FTrace, WALT |
+            | `KernelSU-kebab-performance-*.zip` | Performance | BBRv3, NTFS3, exFAT, FTrace, WALT, ZRAM 1:1 |
 
             ### Feature Details
 
@@ -289,6 +299,7 @@ jobs:
             - NTFS3 & exFAT support
             - ZSwap compression
             - UClamp task scheduling
+            - **ZRAM: 50% of physical memory**
 
             **🔋 Battery Saving:**
             - UClamp task scheduling
@@ -311,6 +322,7 @@ jobs:
             - FTrace debugging
             - WALT scheduling
             - UClamp
+            - **ZRAM: 100% of physical memory (1:1)**
 
             ### Installation
             1. Flash via TWRP: Flash the zip in recovery
