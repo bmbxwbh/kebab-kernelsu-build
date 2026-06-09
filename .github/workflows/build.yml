@@ -27,8 +27,19 @@ jobs:
         include:
           - variant: normal
             suffix: ""
+            features: ""
           - variant: sufs
             suffix: "-sufs"
+            features: "sufs"
+          - variant: battery
+            suffix: "-battery"
+            features: "battery"
+          - variant: hide
+            suffix: "-hide"
+            features: "hide"
+          - variant: performance
+            suffix: "-performance"
+            features: "performance"
 
     steps:
       - name: Checkout repository
@@ -76,7 +87,7 @@ jobs:
           cd ~/android/kernel/oneplus/sm8250
           curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s $KERNELSU_VERSION
 
-      - name: Configure kernel
+      - name: Configure kernel - Base options
         run: |
           cd ~/android/kernel/oneplus/sm8250
 
@@ -92,16 +103,7 @@ jobs:
           export OBJDUMP=llvm-objdump
           export STRIP=llvm-strip
 
-          DEFCONFIG="vendor/kona-perf_defconfig"
-          echo "Using defconfig: $DEFCONFIG"
-
-          if [ ! -f "arch/arm64/configs/$DEFCONFIG" ]; then
-            echo "ERROR: Defconfig not found"
-            ls -la arch/arm64/configs/vendor/
-            exit 1
-          fi
-
-          make "$DEFCONFIG"
+          make vendor/kona-perf_defconfig
 
           ./scripts/config --enable CONFIG_KSU
           ./scripts/config --enable CONFIG_KPROBES
@@ -112,10 +114,60 @@ jobs:
           ./scripts/config --disable CONFIG_MSM_CAMERA || true
           ./scripts/config --disable CONFIG_VIDEO_MSM_CAMERA || true
 
-          if [ "${{ matrix.variant }}" = "sufs" ]; then
-            echo "Enabling SUFS..."
+      - name: Configure kernel - Battery saving features
+        if: matrix.features == 'battery'
+        run: |
+          cd ~/android/kernel/oneplus/sm8250
+
+          export ARCH=arm64
+          export SUBARCH=arm64
+
+          echo "Enabling battery saving features..."
+          
+          ./scripts/config --enable CONFIG_UCLAMP_TASK
+          ./scripts/config --enable CONFIG_UCLAMP_SCHED
+          ./scripts/config --enable CONFIG_ZSWAP
+          ./scripts/config --enable CONFIG_ZSWAP_DEFAULT_ON
+
+          make olddefconfig
+
+      - name: Configure kernel - Hide features
+        if: matrix.features == 'hide' || matrix.features == 'sufs'
+        run: |
+          cd ~/android/kernel/oneplus/sm8250
+
+          export ARCH=arm64
+          export SUBARCH=arm64
+
+          echo "Enabling hide features..."
+          
+          ./scripts/config --enable CONFIG_KSU_HIDE_PID
+          ./scripts/config --enable CONFIG_KSU_UNSHARE
+          ./scripts/config --disable CONFIG_KALLSYMS_ALL
+          ./scripts/config --disable CONFIG_DEBUG_FS
+          ./scripts/config --disable CONFIG_PROC_KCORE
+
+          if [ "${{ matrix.features }}" = "sufs" ]; then
             ./scripts/config --enable CONFIG_KSU_SAFE_SECURITY_FILESYSTEM
           fi
+
+          make olddefconfig
+
+      - name: Configure kernel - Performance features
+        if: matrix.features == 'performance'
+        run: |
+          cd ~/android/kernel/oneplus/sm8250
+
+          export ARCH=arm64
+          export SUBARCH=arm64
+
+          echo "Enabling performance features..."
+          
+          ./scripts/config --enable CONFIG_TCP_CONG_BBR
+          ./scripts/config --enable CONFIG_NTFS3_FS
+          ./scripts/config --enable CONFIG_EXFAT_FS
+          ./scripts/config --enable CONFIG_FTRACE
+          ./scripts/config --enable CONFIG_FUNCTION_TRACER
 
           make olddefconfig
 
@@ -166,13 +218,6 @@ jobs:
           zip -r9 "$HOME_DIR/KernelSU-kebab-${{ matrix.variant }}-$(date +%Y%m%d).zip" * -x .git README.md AnyKernel3.zip
           ls -la "$HOME_DIR/KernelSU-kebab-${{ matrix.variant }}-"*.zip
 
-      - name: Upload boot image artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: KernelSU-kebab-boot-${{ matrix.variant }}
-          path: ~/AnyKernel3_${{ matrix.variant }}/Image.gz
-          retention-days: 7
-
       - name: Upload AnyKernel3 zip
         uses: actions/upload-artifact@v4
         with:
@@ -185,16 +230,9 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
-      - name: Download normal variant artifact
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          name: KernelSU-kebab-zip-normal
-          path: ./dist/
-
-      - name: Download sufs variant artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: KernelSU-kebab-zip-sufs
           path: ./dist/
 
       - name: List files
@@ -203,7 +241,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: ./dist/*.zip
+          files: ./dist/**/*.zip
           body: |
             ## OnePlus 8T (kebab) KernelSU
 
@@ -214,10 +252,33 @@ jobs:
             - Kernel branch: ${{ inputs.lineage_version || 'lineage-23.2' }}
 
             ### Downloads
-            | Variant | Description |
-            |---------|-------------|
-            | `KernelSU-kebab-normal-*.zip` | Standard KernelSU build |
-            | `KernelSU-kebab-sufs-*.zip` | With SUFS (Safe Security FileSystem) support |
+
+            | Variant | Description | Features |
+            |---------|-------------|----------|
+            | `KernelSU-kebab-normal-*.zip` | Standard build | Default LineageOS kernel |
+            | `KernelSU-kebab-sufs-*.zip` | SUFS version | Safe Security FileSystem + Hide features |
+            | `KernelSU-kebab-battery-*.zip` | Battery saving | UClamp, ZSwap |
+            | `KernelSU-kebab-hide-*.zip` | Hide enhanced | HidePID, Unshare, disable debug |
+            | `KernelSU-kebab-performance-*.zip` | Performance | BBRv3, NTFS3, exFAT, FTrace |
+
+            ### Feature Details
+
+            **🔋 Battery Saving:**
+            - UClamp task scheduling
+            - ZSwap compression
+
+            **🎭 Hide Features:**
+            - KSU HidePID2
+            - KSU Unshare
+            - Disable KALLSYMS_ALL
+            - Disable DEBUG_FS
+            - Disable PROC_KCORE
+
+            **⚡ Performance:**
+            - TCP BBRv3 congestion control
+            - NTFS3 support
+            - exFAT support
+            - FTrace debugging
 
             ### Installation
             1. Flash via TWRP: Flash the zip in recovery
