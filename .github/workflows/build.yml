@@ -28,6 +28,9 @@ jobs:
           - variant: balanced
             suffix: ""
             features: "balanced"
+          - variant: unsigned
+            suffix: "-unsigned"
+            features: "unsigned"
           - variant: sufs
             suffix: "-sufs"
             features: "sufs"
@@ -150,6 +153,51 @@ jobs:
           # 编译优化
           ./scripts/config --enable CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE
           ./scripts/config --enable CONFIG_LTO_CLANG
+
+          make olddefconfig
+
+      - name: Configure kernel - Unsigned (Module Sig Bypass)
+        if: matrix.features == 'unsigned'
+        run: |
+          cd ~/android/kernel/oneplus/sm8250
+
+          export ARCH=arm64
+          export SUBARCH=arm64
+
+          echo "Enabling unsigned/bypass module signature features..."
+
+          # 文件系统优化
+          ./scripts/config --enable CONFIG_NTFS3_FS
+          ./scripts/config --enable CONFIG_EXFAT_FS
+          ./scripts/config --enable CONFIG_F2FS_FS
+          ./scripts/config --enable CONFIG_F2FS_FS_LZ4
+
+          # 网络优化
+          ./scripts/config --enable CONFIG_TCP_CONG_BBR
+          ./scripts/config --enable CONFIG_NET_RX_BUSY_POLL
+
+          # 内存优化
+          ./scripts/config --enable CONFIG_ZRAM
+          ./scripts/config --enable CONFIG_ZRAM_COMPRESSION_LZ4
+          ./scripts/config --set-val CONFIG_ZRAM_MEMORY_PERCENTAGE 50
+          ./scripts/config --set-val CONFIG_ZRAM_MAX_DEVICES 1
+          ./scripts/config --enable CONFIG_ZSWAP
+          ./scripts/config --enable CONFIG_TRANSPARENT_HUGEPAGE
+
+          # 调度优化
+          ./scripts/config --enable CONFIG_UCLAMP_TASK
+          ./scripts/config --enable CONFIG_CFS_BANDWIDTH
+          ./scripts/config --enable CONFIG_CPU_FREQ_GOV_SCHEDUTIL
+
+          # 编译优化
+          ./scripts/config --enable CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE
+          ./scripts/config --enable CONFIG_LTO_CLANG
+
+          # 过签名配置 - 禁用模块签名检查
+          ./scripts/config --disable CONFIG_MODULE_SIG
+          ./scripts/config --disable CONFIG_MODULE_SIG_FORCE
+          ./scripts/config --disable CONFIG_MODULE_SIG_ALL
+          ./scripts/config --disable CONFIG_SECURITY_LOCKDOWN_LSM
 
           make olddefconfig
 
@@ -352,6 +400,7 @@ jobs:
             | Variant | Description | Features |
             |---------|-------------|----------|
             | `KernelSU-kebab-balanced-*.zip` | **Recommended** | BBRv3, F2FS+LZ4, NTFS3, exFAT, ZRAM 50%, ZSwap, THP, CFS, UClamp, LTO |
+            | `KernelSU-kebab-unsigned-*.zip` | Module Sig Bypass | Balanced + 禁用模块签名检查 (游戏外挂) |
             | `KernelSU-kebab-sufs-*.zip` | SUFS version | Safe Security FileSystem + Full Hide features + all debug off |
             | `KernelSU-kebab-battery-*.zip` | Battery saving | UClamp, ZSwap, S2IDLE, Wakelocks, DEBUG_FS off, powersave governor |
             | `KernelSU-kebab-hide-*.zip` | Hide enhanced | HidePID, Unshare, KALLSYMS off, DEBUG off, PROC_KCORE off |
@@ -371,6 +420,15 @@ jobs:
             - Schedutil governor
             - Clang LTO optimization
             - CC_OPTIMIZE_FOR_PERFORMANCE
+
+            **🔓 Unsigned (模块签名过签):**
+            - 基于 Balanced 所有功能
+            - 禁用 MODULE_SIG (模块签名检查)
+            - 禁用 MODULE_SIG_FORCE
+            - 禁用 MODULE_SIG_ALL
+            - 禁用 SECURITY_LOCKDOWN_LSM
+            - 可加载未签名内核模块
+            - 适用于游戏外挂/作弊工具
 
             **🔋 Battery Saving:**
             - UClamp task scheduling
