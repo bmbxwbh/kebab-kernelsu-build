@@ -22,6 +22,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container: ubuntu:22.04
+    strategy:
+      matrix:
+        include:
+          - variant: normal
+            suffix: ""
+          - variant: sufs
+            suffix: "-sufs"
 
     steps:
       - name: Checkout repository
@@ -55,13 +62,12 @@ jobs:
           mkdir -p ~/android && cd ~/android
           git clone --depth 1 -b $LINEAGE_VERSION https://github.com/LineageOS/android_kernel_oneplus_sm8250.git kernel/oneplus/sm8250
           git clone --depth 1 -b $LINEAGE_VERSION https://github.com/LineageOS/android_device_oneplus_kebab.git device/oneplus/kebab
-          # vendor oneplus might not exist as a separate repo; try to find the right one
           git clone --depth 1 -b $LINEAGE_VERSION https://github.com/TheMuppets/proprietary_vendor_oneplus.git vendor/oneplus 2>/dev/null || true
           ls kernel/oneplus/sm8250/arch/arm64/configs/vendor/
 
       - name: Clone AnyKernel3
         run: |
-          git clone --depth 1 https://github.com/osm0sis/AnyKernel3.git ~/AnyKernel3
+          git clone --depth 1 https://github.com/osm0sis/AnyKernel3.git ~/AnyKernel3_${{ matrix.variant }}
 
       - name: Integrate KernelSU
         env:
@@ -95,21 +101,22 @@ jobs:
             exit 1
           fi
 
-          # Start from a clean defconfig
           make "$DEFCONFIG"
 
-          # Enable KernelSU options using kernel's config script
           ./scripts/config --enable CONFIG_KSU
           ./scripts/config --enable CONFIG_KPROBES
           ./scripts/config --enable CONFIG_HAVE_KPROBES
           ./scripts/config --enable CONFIG_KPROBE_EVENTS
 
-          # Disable problematic drivers that have missing headers
           ./scripts/config --disable CONFIG_SND_SOC_MSM8996_WCD9335 || true
           ./scripts/config --disable CONFIG_MSM_CAMERA || true
           ./scripts/config --disable CONFIG_VIDEO_MSM_CAMERA || true
 
-          # Re-run olddefconfig to resolve any dependencies
+          if [ "${{ matrix.variant }}" = "sufs" ]; then
+            echo "Enabling SUFS..."
+            ./scripts/config --enable CONFIG_KSU_SAFE_SECURITY_FILESYSTEM
+          fi
+
           make olddefconfig
 
       - name: Build kernel
@@ -128,58 +135,72 @@ jobs:
           export OBJDUMP=llvm-objdump
           export STRIP=llvm-strip
 
-          # Disable warnings-as-errors
           export KCFLAGS="-Wno-error"
 
-          # Build kernel
           make -j$(nproc) Image.gz dtbs 2>&1 | tail -n 500
 
       - name: Prepare AnyKernel3
         run: |
           cd ~/android/kernel/oneplus/sm8250
 
+          ANYKERNEL_DIR=~/AnyKernel3_${{ matrix.variant }}
+
           if [ -f arch/arm64/boot/Image.gz ]; then
-            cp arch/arm64/boot/Image.gz ~/AnyKernel3/
+            cp arch/arm64/boot/Image.gz "$ANYKERNEL_DIR/"
           elif [ -f arch/arm64/boot/Image ]; then
-            cp arch/arm64/boot/Image ~/AnyKernel3/Image.gz
+            cp arch/arm64/boot/Image "$ANYKERNEL_DIR/Image.gz"
           fi
 
           if [ -d arch/arm64/boot/dts ]; then
-            cp -r arch/arm64/boot/dts ~/AnyKernel3/
+            cp -r arch/arm64/boot/dts "$ANYKERNEL_DIR/"
           fi
 
           TAG_NAME=${GITHUB_REF#refs/tags/}
-          echo "KernelSU-${{ inputs.kernelsu_version || 'main' }}-$TAG_NAME" > ~/AnyKernel3/version
+          echo "KernelSU-${{ inputs.kernelsu_version || 'main' }}-$TAG_NAME${{ matrix.suffix }}" > "$ANYKERNEL_DIR/version"
 
       - name: Package AnyKernel3
         run: |
-          cd ~/AnyKernel3
+          ANYKERNEL_DIR=~/AnyKernel3_${{ matrix.variant }}
+          cd "$ANYKERNEL_DIR"
           HOME_DIR="$HOME"
-          zip -r9 "$HOME_DIR/KernelSU-kebab-$(date +%Y%m%d).zip" * -x .git README.md AnyKernel3.zip
-          ls -la "$HOME_DIR/KernelSU-kebab-"*.zip
+          zip -r9 "$HOME_DIR/KernelSU-kebab-${{ matrix.variant }}-$(date +%Y%m%d).zip" * -x .git README.md AnyKernel3.zip
+          ls -la "$HOME_DIR/KernelSU-kebab-${{ matrix.variant }}-"*.zip
 
       - name: Upload boot image artifact
         uses: actions/upload-artifact@v4
         with:
-          name: KernelSU-kebab-boot
-          path: ~/AnyKernel3/Image.gz
+          name: KernelSU-kebab-boot-${{ matrix.variant }}
+          path: ~/AnyKernel3_${{ matrix.variant }}/Image.gz
           retention-days: 7
 
       - name: Upload AnyKernel3 zip
         uses: actions/upload-artifact@v4
         with:
-          name: KernelSU-kebab-zip
-          path: ~/KernelSU-kebab-*.zip
+          name: KernelSU-kebab-zip-${{ matrix.variant }}
+          path: ~/KernelSU-kebab-${{ matrix.variant }}-*.zip
           retention-days: 30
 
-      - name: Download artifacts
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download normal variant artifact
         uses: actions/download-artifact@v4
         with:
-          name: KernelSU-kebab-zip
+          name: KernelSU-kebab-zip-normal
           path: ./dist/
 
+      - name: Download sufs variant artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: KernelSU-kebab-zip-sufs
+          path: ./dist/
+
+      - name: List files
+        run: ls -la ./dist/
+
       - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
           files: ./dist/*.zip
@@ -191,6 +212,12 @@ jobs:
             - SoC: Qualcomm SM8250 (Snapdragon 865)
             - KernelSU: ${{ inputs.kernelsu_version || 'main' }}
             - Kernel branch: ${{ inputs.lineage_version || 'lineage-23.2' }}
+
+            ### Downloads
+            | Variant | Description |
+            |---------|-------------|
+            | `KernelSU-kebab-normal-*.zip` | Standard KernelSU build |
+            | `KernelSU-kebab-sufs-*.zip` | With SUFS (Safe Security FileSystem) support |
 
             ### Installation
             1. Flash via TWRP: Flash the zip in recovery
