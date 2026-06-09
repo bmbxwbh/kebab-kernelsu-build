@@ -123,17 +123,33 @@ jobs:
           export SUBARCH=arm64
 
           echo "Enabling balanced features..."
-          
-          ./scripts/config --enable CONFIG_TCP_CONG_BBR
+
+          # 文件系统优化
           ./scripts/config --enable CONFIG_NTFS3_FS
           ./scripts/config --enable CONFIG_EXFAT_FS
-          ./scripts/config --enable CONFIG_ZSWAP
-          ./scripts/config --enable CONFIG_UCLAMP_TASK
-          
+          ./scripts/config --enable CONFIG_F2FS_FS
+          ./scripts/config --enable CONFIG_F2FS_FS_LZ4
+
+          # 网络优化
+          ./scripts/config --enable CONFIG_TCP_CONG_BBR
+          ./scripts/config --enable CONFIG_NET_RX_BUSY_POLL
+
+          # 内存优化
           ./scripts/config --enable CONFIG_ZRAM
           ./scripts/config --enable CONFIG_ZRAM_COMPRESSION_LZ4
           ./scripts/config --set-val CONFIG_ZRAM_MEMORY_PERCENTAGE 50
           ./scripts/config --set-val CONFIG_ZRAM_MAX_DEVICES 1
+          ./scripts/config --enable CONFIG_ZSWAP
+          ./scripts/config --enable CONFIG_TRANSPARENT_HUGEPAGE
+
+          # 调度优化
+          ./scripts/config --enable CONFIG_UCLAMP_TASK
+          ./scripts/config --enable CONFIG_CFS_BANDWIDTH
+          ./scripts/config --enable CONFIG_CPU_FREQ_GOV_SCHEDUTIL
+
+          # 编译优化
+          ./scripts/config --enable CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE
+          ./scripts/config --enable CONFIG_LTO_CLANG
 
           make olddefconfig
 
@@ -146,12 +162,28 @@ jobs:
           export SUBARCH=arm64
 
           echo "Enabling battery saving features..."
-          
+
+          # 文件系统优化
+          ./scripts/config --enable CONFIG_F2FS_FS
+          ./scripts/config --enable CONFIG_F2FS_FS_LZ4
+
+          # 内存优化（省电）
           ./scripts/config --enable CONFIG_UCLAMP_TASK
           ./scripts/config --enable CONFIG_UCLAMP_SCHED
           ./scripts/config --enable CONFIG_ZSWAP
           ./scripts/config --enable CONFIG_ZSWAP_DEFAULT_ON
+
+          # 电源管理
+          ./scripts/config --enable CONFIG_SUSPEND_TO_IDLE
+          ./scripts/config --enable CONFIG_PM_WAKELOCKS
+
+          # 调试关闭
           ./scripts/config --disable CONFIG_DEBUG_FS
+          ./scripts/config --disable CONFIG_DEBUG_KERNEL
+
+          # 调度优化（省电）
+          ./scripts/config --enable CONFIG_CPU_FREQ_GOV_SCHEDUTIL
+          ./scripts/config --enable CONFIG_CPU_FREQ_GOV_POWERSAVE
 
           make olddefconfig
 
@@ -164,14 +196,24 @@ jobs:
           export SUBARCH=arm64
 
           echo "Enabling hide features..."
-          
+
+          # 基础文件系统
+          ./scripts/config --enable CONFIG_F2FS_FS
+
+          # 隐藏相关
           ./scripts/config --enable CONFIG_KSU_HIDE_PID
           ./scripts/config --enable CONFIG_KSU_UNSHARE
           ./scripts/config --disable CONFIG_KALLSYMS_ALL
           ./scripts/config --disable CONFIG_DEBUG_FS
           ./scripts/config --disable CONFIG_PROC_KCORE
 
+          # 调试全部关闭
+          ./scripts/config --disable CONFIG_DEBUG_KERNEL
+          ./scripts/config --disable CONFIG_DEBUG_INFO
+          ./scripts/config --disable CONFIG_DEBUG_MEMORY_INIT
+
           if [ "${{ matrix.features }}" = "sufs" ]; then
+            echo "Enabling SUFS..."
             ./scripts/config --enable CONFIG_KSU_SAFE_SECURITY_FILESYSTEM
           fi
 
@@ -186,19 +228,39 @@ jobs:
           export SUBARCH=arm64
 
           echo "Enabling performance features..."
-          
-          ./scripts/config --enable CONFIG_TCP_CONG_BBR
+
+          # 文件系统优化
           ./scripts/config --enable CONFIG_NTFS3_FS
           ./scripts/config --enable CONFIG_EXFAT_FS
-          ./scripts/config --enable CONFIG_FTRACE
-          ./scripts/config --enable CONFIG_FUNCTION_TRACER
-          ./scripts/config --enable CONFIG_UCLAMP_TASK
-          ./scripts/config --enable CONFIG_SCHED_WALT
-          
+          ./scripts/config --enable CONFIG_F2FS_FS
+          ./scripts/config --enable CONFIG_F2FS_FS_LZ4
+
+          # 网络优化
+          ./scripts/config --enable CONFIG_TCP_CONG_BBR
+          ./scripts/config --enable CONFIG_NET_RX_BUSY_POLL
+
+          # 内存优化（性能优先）
           ./scripts/config --enable CONFIG_ZRAM
           ./scripts/config --enable CONFIG_ZRAM_COMPRESSION_LZ4
           ./scripts/config --set-val CONFIG_ZRAM_MEMORY_PERCENTAGE 100
           ./scripts/config --set-val CONFIG_ZRAM_MAX_DEVICES 1
+          ./scripts/config --enable CONFIG_TRANSPARENT_HUGEPAGE
+          ./scripts/config --enable CONFIG_KSM
+
+          # 调度优化（性能）
+          ./scripts/config --enable CONFIG_UCLAMP_TASK
+          ./scripts/config --enable CONFIG_SCHED_WALT
+          ./scripts/config --enable CONFIG_CFS_BANDWIDTH
+          ./scripts/config --enable CONFIG_CPU_FREQ_GOV_SCHEDUTIL
+          ./scripts/config --enable CONFIG_CPU_FREQ_GOV_PERFORMANCE
+
+          # 编译优化
+          ./scripts/config --enable CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE
+          ./scripts/config --enable CONFIG_LTO_CLANG
+
+          # 追踪/性能分析
+          ./scripts/config --enable CONFIG_FTRACE
+          ./scripts/config --enable CONFIG_FUNCTION_TRACER
 
           make olddefconfig
 
@@ -286,43 +348,65 @@ jobs:
 
             | Variant | Description | Features |
             |---------|-------------|----------|
-            | `KernelSU-kebab-balanced-*.zip` | **Recommended** | BBRv3, NTFS3, exFAT, ZSwap, UClamp, ZRAM 50% |
-            | `KernelSU-kebab-sufs-*.zip` | SUFS version | Safe Security FileSystem + Full Hide features |
-            | `KernelSU-kebab-battery-*.zip` | Battery saving | UClamp, ZSwap (default), disabled DEBUG_FS |
-            | `KernelSU-kebab-hide-*.zip` | Hide enhanced | HidePID, Unshare, disable debug symbols |
-            | `KernelSU-kebab-performance-*.zip` | Performance | BBRv3, NTFS3, exFAT, FTrace, WALT, ZRAM 1:1 |
+            | `KernelSU-kebab-balanced-*.zip` | **Recommended** | BBRv3, F2FS+LZ4, NTFS3, exFAT, ZRAM 50%, ZSwap, THP, CFS, UClamp, LTO |
+            | `KernelSU-kebab-sufs-*.zip` | SUFS version | Safe Security FileSystem + Full Hide features + all debug off |
+            | `KernelSU-kebab-battery-*.zip` | Battery saving | UClamp, ZSwap, S2IDLE, Wakelocks, DEBUG_FS off, powersave governor |
+            | `KernelSU-kebab-hide-*.zip` | Hide enhanced | HidePID, Unshare, KALLSYMS off, DEBUG off, PROC_KCORE off |
+            | `KernelSU-kebab-performance-*.zip` | Performance | BBRv3, F2FS+LZ4, NTFS3, exFAT, ZRAM 1:1, KSM, THP, CFS, WALT, UClamp, LTO, FTRACE |
 
             ### Feature Details
 
             **⚖️ Balanced (推荐):**
             - TCP BBRv3 congestion control
+            - F2FS + LZ4 compression
             - NTFS3 & exFAT support
+            - ZRAM (50% RAM)
             - ZSwap compression
+            - Transparent Hugepage
             - UClamp task scheduling
-            - **ZRAM: 50% of physical memory**
+            - CFS Bandwidth
+            - Schedutil governor
+            - Clang LTO optimization
+            - CC_OPTIMIZE_FOR_PERFORMANCE
 
             **🔋 Battery Saving:**
             - UClamp task scheduling
-            - ZSwap compression (enabled by default)
-            - Disable DEBUG_FS
+            - ZSwap (default on)
+            - S2IDLE (deeper idle)
+            - Wake locks control
+            - DEBUG_FS off (save power)
+            - Powersave CPU governor
+            - Schedutil governor
+            - F2FS filesystem
 
             **🎭 Hide Features:**
             - KSU HidePID2
             - KSU Unshare
-            - Disable KALLSYMS_ALL
-            - Disable DEBUG_FS
-            - Disable PROC_KCORE
+            - KALLSYMS_ALL disabled
+            - DEBUG_FS disabled
+            - PROC_KCORE disabled
+            - DEBUG_KERNEL disabled
+            - DEBUG_INFO disabled
+            - DEBUG_MEMORY_INIT disabled
 
             **🛡️ SUFS:**
-            - All Hide features + Safe Security FileSystem
+            - All Hide features
+            - Safe Security FileSystem
 
             **⚡ Performance:**
             - TCP BBRv3 congestion control
+            - F2FS + LZ4 compression
             - NTFS3 & exFAT support
-            - FTrace debugging
+            - ZRAM (100% RAM, 1:1)
+            - KSM (Kernel Same-page Merging)
+            - Transparent Hugepage
+            - UClamp task scheduling
             - WALT scheduling
-            - UClamp
-            - **ZRAM: 100% of physical memory (1:1)**
+            - CFS Bandwidth
+            - Performance + Schedutil governors
+            - Clang LTO optimization
+            - CC_OPTIMIZE_FOR_PERFORMANCE
+            - FTrace debugging support
 
             ### Installation
             1. Flash via TWRP: Flash the zip in recovery
