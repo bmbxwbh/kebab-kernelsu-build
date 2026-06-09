@@ -25,9 +25,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - variant: normal
+          - variant: balanced
             suffix: ""
-            features: ""
+            features: "balanced"
           - variant: sufs
             suffix: "-sufs"
             features: "sufs"
@@ -114,6 +114,24 @@ jobs:
           ./scripts/config --disable CONFIG_MSM_CAMERA || true
           ./scripts/config --disable CONFIG_VIDEO_MSM_CAMERA || true
 
+      - name: Configure kernel - Balanced features (default)
+        if: matrix.features == 'balanced'
+        run: |
+          cd ~/android/kernel/oneplus/sm8250
+
+          export ARCH=arm64
+          export SUBARCH=arm64
+
+          echo "Enabling balanced features..."
+          
+          ./scripts/config --enable CONFIG_TCP_CONG_BBR
+          ./scripts/config --enable CONFIG_NTFS3_FS
+          ./scripts/config --enable CONFIG_EXFAT_FS
+          ./scripts/config --enable CONFIG_ZSWAP
+          ./scripts/config --enable CONFIG_UCLAMP_TASK
+
+          make olddefconfig
+
       - name: Configure kernel - Battery saving features
         if: matrix.features == 'battery'
         run: |
@@ -128,6 +146,7 @@ jobs:
           ./scripts/config --enable CONFIG_UCLAMP_SCHED
           ./scripts/config --enable CONFIG_ZSWAP
           ./scripts/config --enable CONFIG_ZSWAP_DEFAULT_ON
+          ./scripts/config --disable CONFIG_DEBUG_FS
 
           make olddefconfig
 
@@ -168,6 +187,8 @@ jobs:
           ./scripts/config --enable CONFIG_EXFAT_FS
           ./scripts/config --enable CONFIG_FTRACE
           ./scripts/config --enable CONFIG_FUNCTION_TRACER
+          ./scripts/config --enable CONFIG_UCLAMP_TASK
+          ./scripts/config --enable CONFIG_SCHED_WALT
 
           make olddefconfig
 
@@ -255,17 +276,24 @@ jobs:
 
             | Variant | Description | Features |
             |---------|-------------|----------|
-            | `KernelSU-kebab-normal-*.zip` | Standard build | Default LineageOS kernel |
-            | `KernelSU-kebab-sufs-*.zip` | SUFS version | Safe Security FileSystem + Hide features |
-            | `KernelSU-kebab-battery-*.zip` | Battery saving | UClamp, ZSwap |
-            | `KernelSU-kebab-hide-*.zip` | Hide enhanced | HidePID, Unshare, disable debug |
-            | `KernelSU-kebab-performance-*.zip` | Performance | BBRv3, NTFS3, exFAT, FTrace |
+            | `KernelSU-kebab-balanced-*.zip` | **Recommended** | Balanced: BBRv3, NTFS3, exFAT, ZSwap, UClamp |
+            | `KernelSU-kebab-sufs-*.zip` | SUFS version | Safe Security FileSystem + Full Hide features |
+            | `KernelSU-kebab-battery-*.zip` | Battery saving | UClamp, ZSwap, disabled DEBUG_FS |
+            | `KernelSU-kebab-hide-*.zip` | Hide enhanced | HidePID, Unshare, disable debug symbols |
+            | `KernelSU-kebab-performance-*.zip` | Performance | BBRv3, NTFS3, exFAT, FTrace, WALT |
 
             ### Feature Details
 
+            **⚖️ Balanced (推荐):**
+            - TCP BBRv3 congestion control
+            - NTFS3 & exFAT support
+            - ZSwap compression
+            - UClamp task scheduling
+
             **🔋 Battery Saving:**
             - UClamp task scheduling
-            - ZSwap compression
+            - ZSwap compression (enabled by default)
+            - Disable DEBUG_FS
 
             **🎭 Hide Features:**
             - KSU HidePID2
@@ -274,11 +302,15 @@ jobs:
             - Disable DEBUG_FS
             - Disable PROC_KCORE
 
+            **🛡️ SUFS:**
+            - All Hide features + Safe Security FileSystem
+
             **⚡ Performance:**
             - TCP BBRv3 congestion control
-            - NTFS3 support
-            - exFAT support
+            - NTFS3 & exFAT support
             - FTrace debugging
+            - WALT scheduling
+            - UClamp
 
             ### Installation
             1. Flash via TWRP: Flash the zip in recovery
