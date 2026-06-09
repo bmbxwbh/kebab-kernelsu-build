@@ -154,7 +154,9 @@ jobs:
       - name: Package AnyKernel3
         run: |
           cd ~/AnyKernel3
-          zip -r9 ../KernelSU-kebab-$(date +%Y%m%d).zip * -x .git README.md AnyKernel3.zip
+          HOME_DIR="$HOME"
+          zip -r9 "$HOME_DIR/KernelSU-kebab-$(date +%Y%m%d).zip" * -x .git README.md AnyKernel3.zip
+          ls -la "$HOME_DIR/KernelSU-kebab-"*.zip
 
       - name: Upload boot image artifact
         uses: actions/upload-artifact@v4
@@ -174,7 +176,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
-          files: ~/KernelSU-kebab-*.zip
+          files: ${{ env.HOME }}/KernelSU-kebab-*.zip
           body: |
             ## OnePlus 8T (kebab) KernelSU
 
