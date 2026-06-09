@@ -308,7 +308,7 @@ jobs:
           ANYKERNEL_DIR=~/AnyKernel3_${{ matrix.variant }}
           cd "$ANYKERNEL_DIR"
           
-          chmod +x update-binary
+          chmod +x META-INF/com/google/android/update-binary
           
           HOME_DIR="$HOME"
           zip -r9X "$HOME_DIR/KernelSU-kebab-${{ matrix.variant }}-$(date +%Y%m%d).zip" * -x .git README.md AnyKernel3.zip
